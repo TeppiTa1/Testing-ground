@@ -2,6 +2,7 @@ import pymupdf
 import re
 import os
 
+global base_name, output_folder, extracted_numbers, increment_full
 
 #Initiate some boxes :)
 def create_pdf_snippet(source_doc, source_page, crop_rect, base_filename, question_index, output_dir, part_suffix="", save_to_disk=True):
@@ -48,6 +49,22 @@ def create_pdf_snippet(source_doc, source_page, crop_rect, base_filename, questi
     #    width=1.5)
 
 # Open PDF file
+def find_x1(page_object, safe_rect):
+    """
+    Searches a specific area of a page and
+    Returns the largest x1 coordinate found.
+    """
+    max_x1 = 50
+    # Extract words within the safe rectangle
+    words_in_rect = page_object.get_text("words", clip=safe_rect)
+    
+    for word in words_in_rect:
+        word_rect = pymupdf.Rect(word[:4])
+        if safe_rect.intersects(word_rect):
+            if word_rect.x1 > max_x1:
+                max_x1 = word_rect.x1
+    return max_x1
+
 
 def process_pdf(input_path, output_path):
     print(f"\n--- Processing file: {os.path.basename(input_path)} ---")
@@ -138,9 +155,9 @@ def process_pdf(input_path, output_path):
                         "data":extracted_numbers[i-1] 
                     }
                     increment_full.append(increment_info)
-                elif i  == len(extracted_numbers) - 1:
+                elif i  == len(extracted_numbers) :
                     increment_info = {
-                            "index": i + 1,
+                            "index": i ,
                             "data":extracted_numbers[i] 
                     }
                     increment_full.append(increment_info)
@@ -158,7 +175,7 @@ def process_pdf(input_path, output_path):
                 print(f"  -> On Page: {number_data['page_num'] + 1}")
 
         #cutting out mark schemes
-        for question in range(1,len(increment_full)):
+        for question in range(0,len(increment_full)):
             Current_question = increment_full[question-1]['data']['rect']
             x0_coord = Current_question.x0
             y0_coord = 60
@@ -192,11 +209,13 @@ def process_pdf(input_path, output_path):
 
                 # another one for the next page
                     page2 = doc[increment_full[question]['data']['page_num']]
-                    if question != len(increment_full) - 1:
+                    if question != len(increment_full) :
                         question_border2 = pymupdf.Rect(50,y0_coord,x1_coord -5, y1_coord)
                     else:
                         #This is for the Last question
-                        question_border2 = pymupdf.Rect(50,y0_coord,Next_question.x1 + 5, y1_coord)
+                        safe_search_rect = pymupdf.Rect(50, 0, 525, 780)
+                        Last_x1 = find_x1(page2, safe_search_rect)
+                        question_border2 = pymupdf.Rect(50,y0_coord,Last_x1, y1_coord)
 
                     part2_doc = create_pdf_snippet(doc, page2, question_border2, base_name, question_number_for_name, output_folder, save_to_disk=False)
 
@@ -230,6 +249,17 @@ def process_pdf(input_path, output_path):
         # Make sure the document is always closed
         if doc:
             doc.close
+
+    debugip = input("Do you want to open Debugger? (Press Enter to continue...)")
+    if debugip == "":
+        print("Length of question:", len(extracted_numbers))
+        print("Increment Value:", len(increment_full))
+        print("Last increment data:", increment_full[-1])
+        #print(Last_x1)
+        input("Press Enter to continue...")
+
+
+
 
 
 if __name__ == "__main__":
