@@ -25,7 +25,7 @@ AS Level content
 8.1 Database Concepts
 8.2 Database Management Systems (DBMS)
 8.3 Data Definition Language (DDL) and Data Manipulation Language (DML)
-9 Algorithm Design and Problem-solving :
+9 Algorithm Design and Problem solving :
 9.1 Computational Thinking Skills
 9.2 Algorithms
 10 Data Types and Structures :

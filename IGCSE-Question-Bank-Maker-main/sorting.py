@@ -15,7 +15,7 @@ try:
 except KeyError:
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     print("!!! ERROR: GOOGLE_API_KEY environment variable not set.     !!!")
-    print("!!! Please set your API key before running the script.        !!!")
+    print("!!! Please set your API key before running the script.      !!!")
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     exit()
 
@@ -85,7 +85,7 @@ You are an expert examiner for Subject Code {subject_code}. Your task is to anal
 """
     try:
         # Increased temperature for better creative classification, but keep it low for accuracy
-        time.sleep(25)  # To avoid hitting rate limits
+        time.sleep(20)  # To avoid hitting rate limits
         response = model.generate_content(prompt, generation_config={"temperature": 0.2})
         return response.text.strip()
     except Exception as e:
@@ -109,7 +109,7 @@ def main():
             continue
 
         print(f"\nProcessing Subject: {subject_code_folder}")
-
+        canonical_topic_map = {}
         # 1. Find and load the syllabus for this subject
         syllabus_file = find_syllabus_file(subject_code_folder)
         if not syllabus_file:
@@ -152,20 +152,37 @@ def main():
                     print(f"    - Found Topics: {topics}")
                     
                     for topic in topics:
-                        # Sanitize the topic name to make it a valid folder name
-                        # Removes characters like / \ : * ? " < > |
-                        sanitized_topic = re.sub(r'[\\/*?:"<>|]', "", topic)
+                        # --- THIS IS THE NEW NORMALIZATION LOGIC ---
+
+                        # 1. Create the CANONICAL KEY by removing all non-letters/numbers
+                        #    and converting to lowercase.
+                        canonical_key = re.sub(r'[^a-z0-9]+', '', topic.lower())
+
+                        # 2. Check if we've seen this canonical key before
+                        if canonical_key in canonical_topic_map:
+                            # If yes, use the folder name we created the first time.
+                            final_topic_name = canonical_topic_map[canonical_key]
+                        else:
+                            # If no, this is the first time we've seen this topic.
+                            # Create the human-readable folder name now...
+                            human_readable_name = re.sub(r'[\s_-]+', '_', topic) # Your old sanitization
+                            # ...and store it in our map for future use.
+                            canonical_topic_map[canonical_key] = human_readable_name
+                            final_topic_name = human_readable_name
                         
-                        # Create the final output path
-                        topic_folder_path = os.path.join(SORTED_OUTPUT_DIR, subject_code_folder, sanitized_topic)
+                        # --- END OF NEW LOGIC ---
+                        
+                        topic_folder_path = os.path.join(SORTED_OUTPUT_DIR, subject_code_folder, final_topic_name)
                         os.makedirs(topic_folder_path, exist_ok=True)
                         
-                        # Create a descriptive new filename to avoid clashes
                         new_filename = f"{paper_name_folder}_{question_filename}"
                         destination_path = os.path.join(topic_folder_path, new_filename)
                         
-                        # Copy the original question file to the new topic folder
-                        shutil.copy(question_filepath, destination_path)
+                        if os.path.exists(destination_path):
+                            print(f"    - Skipping copy: File already exists in '{final_topic_name}'")
+                        else:
+                            shutil.copy(question_filepath, destination_path)
+                            print(f"    - Successfully copied to '{final_topic_name}'")
     
     print("\n--- AI sorting process complete! ---")
 

@@ -40,18 +40,27 @@ class Split:
             print(f"\r'{self.info['name']}' processed: {index + 1}/{path_num}", end=" ")
         print("\nFinished processing all papers.")
 
-    def crawl(self, path):
-        # No changes needed here
-        rootdir = os.fsencode(path)
-        if rootdir is not None:
-            if os.path.isfile(rootdir):
-                self.paths.append(rootdir.decode('UTF-8'))
-            elif os.path.exists(rootdir):
-                for subdir, dirs, files in os.walk(rootdir):
-                    for file in files:
-                        filepath = (subdir + os.sep.encode('UTF-8') + file).decode('UTF-8')
-                        if filepath.endswith(".pdf") and "qp" in filepath:
-                            self.paths.append(filepath)
+def crawl(self, path):
+    rootdir = os.fsencode(path)
+
+    # Split all pdfs in the root directory if it exists
+    if rootdir is not None:
+        if os.path.isfile(rootdir):
+            self.paths.append(rootdir.decode('UTF-8'))
+        elif os.path.exists(rootdir):
+            for subdir, dirs, files in os.walk(rootdir):
+                
+                # --- THIS IS THE FIX ---
+                # If the current subdirectory is one of our output folders, skip it entirely.
+                decoded_subdir = subdir.decode('UTF-8')
+                if "extracted_questions" in decoded_subdir or "sorted_questions_by_topic" in decoded_subdir:
+                    continue # This tells the loop to immediately move to the next subdirectory
+                # --- END OF FIX ---
+                
+                for file in files:
+                    filepath = (subdir + os.sep.encode('UTF-8') + file).decode('UTF-8')
+                    if filepath.endswith(".pdf") and "qp" in filepath:
+                        self.paths.append(filepath)
 
     def _is_new_format(self, page):
         # No changes needed here

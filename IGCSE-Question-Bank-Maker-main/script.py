@@ -1,33 +1,59 @@
-from splitter import Split
-from merger import Merge
-from query import Query, ParseInput
+import os
+# We import the other scripts as modules to access their functions/classes
+import splitter
+import sorting
+import MockBuilder
 
-isLoading = input(r"Do you want to load new papers from the 'papers' directory into the database? (y/n): ")
+def get_user_choice(prompt):
+    """A helper function to get a clean 'y' or 'n' from the user."""
+    while True:
+        choice = input(prompt).lower().strip()
+        if choice in ['y', 'n']:
+            return choice
+        print("!!! Invalid input. Please enter 'y' or 'n'.")
 
-if isLoading == "y":
-    # Splits all the papers contained in the source directory "papers"
-    Split("papers")
+def main_workflow():
+    """Controls the main execution flow of the entire process."""
+    
+    print("--- Cambridge Question Bank Toolkit ---")
 
-# Queries the database for all papers that contain the search string with a given similarity index
-#source = Query("questions/database.csv", [{"column_name": "text", "search_string": "trophic level", "similarity": 0.9},
-#                                          {"column_name": "subject_code", "search_string": "0610", "similarity": 1}])
+    # --- Step 1: Run the PDF Splitter ---
+    if get_user_choice("\nDo you want to extract questions from new PDFs in the 'papers' folder? (y/n): ") == 'y':
+        papers_directory = "papers"
+        # Check if the source folder exists before trying to run
+        if os.path.isdir(papers_directory):
+            print("\n>>> Running the PDF Splitter...")
+            # We call the Split class from the imported splitter module
+            splitter.Split(papers_directory)
+            print(">>> PDF Splitting Complete.\n")
+        else:
+            print(f"!!! ERROR: The '{papers_directory}' folder was not found. Please create it and add PDFs to process.")
 
-isLoading = input(r"Do you want to load new markschemes from the 'papers' directory into the database? (y/n): ")
+    # --- Step 2: Run the AI Sorter ---
+    if get_user_choice("Do you want to sort the extracted questions into topics using AI? (y/n): ") == 'y':
+        extraction_directory = "extracted_questions"
+        # Check if the splitter has been run and its output folder exists
+        if os.path.isdir(extraction_directory):
+            print("\n>>> Running the AI Sorter (this may take a while)...")
+            # We call the main() function from the imported sorting module
+            sorting.main()
+            print(">>> AI Sorting Complete.\n")
+        else:
+            print(f"!!! ERROR: The '{extraction_directory}' folder was not found. Please run the splitter first.")
 
-if isLoading == "y":
-    SplitMarkScheme("papers")
+    # --- Step 3: Run the Mock Paper Builder ---
+    if get_user_choice("Do you want to build a mock paper from the sorted questions? (y/n): ") == 'y':
+        sorted_directory = "sorted_questions_by_topic"
+        # Check if the sorter has been run and its output folder exists
+        if os.path.isdir(sorted_directory):
+            print("\n>>> Starting the Mock Paper Builder...")
+            # We call the main() function from the imported MockBuilder module
+            MockBuilder.main()
+            print(">>> Mock Paper Builder Finished.\n")
+        else:
+            print(f"!!! ERROR: The '{sorted_directory}' folder was not found. Please run the AI sorter first.")
 
-isLoading = input(r"Do you want to query any loaded papers? (y/n): ")
-
-if isLoading == "y":
-    inputString = input(r"Enter a search string with the example format: text=trophic level, similarity=0.9  AND "
-                        r"subject_code=0610" + "\n")
-
-    # Queries the database for all papers that contain the search string with a given similarity index
-    source = Query("questions/database.csv", ParseInput(inputString))
-
-    # Merges all the papers that match the query into one pdf
-    Merge(source, "test.pdf")
-
-# Asks the user to press enter to exit the program
-input("Press enter to exit the program")
+# --- This ensures the script runs when you execute it directly ---
+if __name__ == "__main__":
+    main_workflow()
+    input("--- All tasks finished. Press Enter to exit. ---")
