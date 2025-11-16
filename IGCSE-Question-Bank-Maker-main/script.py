@@ -3,6 +3,7 @@ import os
 import splitter
 import sorting
 import MockBuilder
+import MarkSchemeExtractor
 
 def get_user_choice(prompt):
     """A helper function to get a clean 'y' or 'n' from the user."""
@@ -22,12 +23,37 @@ def main_workflow():
         papers_directory = "papers"
         # Check if the source folder exists before trying to run
         if os.path.isdir(papers_directory):
-            print("\n>>> Running the PDF Splitter...")
-            # We call the Split class from the imported splitter module
-            splitter.Split(papers_directory)
-            print(">>> PDF Splitting Complete.\n")
+            print("\n>>> Scanning 'papers' folder and dispatching to extractors...")
+            
+            # Get a list of all PDFs to process
+            pdf_files_to_process = [f for f in os.listdir(papers_directory) if f.lower().endswith('.pdf')]
+            
+            if not pdf_files_to_process:
+                print("No PDF files found in the 'papers' folder.")
+            else:
+                for pdf_file in pdf_files_to_process:
+                    input_file_path = os.path.join(papers_directory, pdf_file)
+                    base_name, _ = os.path.splitext(pdf_file)
+                    
+                    # --- THIS IS THE NEW DISPATCHER LOGIC ---
+                    filename_lower = pdf_file.lower()
+                    
+                    if "qp" in filename_lower:
+                        print(f"\n-> Found Question Paper: {pdf_file}. Running Splitter...")
+                        # We call the Split class from the splitter module
+                        splitter.Split(input_file_path, crawl=False) # crawl=False processes one file
+                        
+                    elif "ms" in filename_lower:
+                        print(f"\n-> Found Mark Scheme: {pdf_file}. Running MarkSchemeExtractor...")
+                        # We call the main function from the MarkSchemeExtractor module
+                        MarkSchemeExtractor.process_mark_scheme(input_file_path, base_name)
+                        
+                    else:
+                        print(f"\n-> Skipping file (not a 'qp' or 'ms'): {pdf_file}")
+
+            print("\n>>> PDF Extraction Complete.\n")
         else:
-            print(f"!!! ERROR: The '{papers_directory}' folder was not found. Please create it and add PDFs to process.")
+            print(f"!!! ERROR: The '{papers_directory}' folder was not found.")
 
     # --- Step 2: Run the AI Sorter ---
     if get_user_choice("Do you want to sort the extracted questions into topics using AI? (y/n): ") == 'y':
